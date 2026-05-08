@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Harmony Director</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1e293b;
+            color: #f1f5f9;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        .key {
+            transition: background-color 0.1s;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .white-key {
+            background: white;
+            color: #334155;
+            height: 160px;
+            width: 45px;
+            border: 1px solid #cbd5e1;
+            border-radius: 0 0 4px 4px;
+            z-index: 1;
+        }
+
+        .white-key:active, .white-key.active {
+            background: #e2e8f0;
+            transform: translateY(2px);
+        }
+
+        .black-key {
+            background: #0f172a;
+            color: white;
+            height: 100px;
+            width: 30px;
+            margin-left: -15px;
+            margin-right: -15px;
+            z-index: 2;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .black-key:active, .black-key.active {
+            background: #334155;
+            transform: translateY(2px);
+        }
+
+        .control-panel {
+            background: #334155;
+            border-radius: 1rem;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .sustain-active-glow {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            border-color: rgba(239, 68, 68, 0.5) !important;
+        }
+
+        #keyboard-scroll-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        #keyboard-scroll-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .big-btn:active {
+            transform: scale(0.95);
+        }
+
+        @media (max-width: 640px) {
+            .btn-text {
+                font-size: 8px !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 pb-20">
+
+    <div class="w-full max-w-6xl">
+        <!-- Header -->
+        <header class="flex justify-between items-end mb-6 px-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-black text-blue-400 tracking-tight leading-none">HARMONY DIRECTOR <span class="text-sm font-normal text-slate-400">v1.26</span></h1>
+                <p class="text-[9px] md:text-[10px] text-slate-500 uppercase mt-1 text-nowrap">Professional Tuning & Metronome Support</p>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="text-right">
+                    <div id="master-clock" class="text-lg md:text-xl font-mono font-bold text-emerald-400">000.0 Hz</div>
+                    <div class="text-[8px] text-slate-500 uppercase text-right">Current Pitch</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- TOP CONTROLS -->
+        <div class="w-full mb-2 px-2 md:px-4 flex justify-between items-center gap-2">
+            <!-- SOUND SELECTOR -->
+            <div class="flex items-center gap-1 md:gap-2 bg-slate-700 p-1 md:p-2 rounded-2xl border border-slate-600 shadow-lg flex-1 md:flex-none">
+                <div class="px-1 md:px-2 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M6 10v4"/><path d="M18 10v4"/><path d="M2 12v0"/><path d="M22 12v0"/><path d="M10 8v8"/><path d="M14 8v8"/></svg>
+                </div>
+                <select id="osc-type-select" class="bg-transparent border-none text-[10px] md:text-xs font-bold text-white focus:ring-0 cursor-pointer pr-4 md:pr-8 outline-none">
+                    <optgroup label="波形" class="bg-slate-800">
+                        <option value="square" selected>音色: 矩形波</option>
+                        <option value="sawtooth">音色: 鋸歯状波</option>
+                        <option value="triangle">音色: 三角波</option>
+                        <option value="sine">音色: 正弦波</option>
+                    </optgroup>
+                    <optgroup label="楽器" class="bg-slate-800">
+                        <option value="piano">音色: ピアノ</option>
+                        <option value="organ">音色: オルガン</option>
+                        <option value="violin">音色: ヴァイオリン</option>
+                        <option value="flute">音色: フルート</option>
+                        <option value="oboe">音色: オーボエ</option>
+                        <option value="clarinet">音色: クラリネット</option>
+                        <option value="bassoon">音色: ファゴット</option>
+                        <option value="horn">音色: ホルン</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- SUSTAIN TOGGLE -->
+            <button id="sustain-toggle" class="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-2 md:py-3 bg-slate-700 hover:bg-slate-600 rounded-2xl transition-all border-2 border-transparent group">
+                <div class="flex flex-col items-end">
+                    <span class="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Sustain</span>
+                    <span id="sustain-status" class="text-[10px] md:text-xs font-black text-white">ON</span>
+                </div>
+                <div id="sustain-led" class="w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500 border-2 border-red-300 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+            </button>
+        </div>
+
+        <!-- 1. Keyboard -->
+        <div class="relative group mb-8">
+            <button id="scroll-left" class="absolute left-0 top-1/2 -translate-y-1/2 z-30 bg-slate-800/90 hover:bg-slate-700 text-white p-3 md:p-4 rounded-r-2xl border-y border-r border-slate-600 transition-all shadow-2xl flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+
+            <div id="keyboard-scroll-container" class="bg-slate-900 py-6 px-2 rounded-3xl shadow-2xl border border-slate-700 overflow-x-auto relative">
+                <div id="keyboard" class="flex justify-start min-w-max px-8 md:px-12">
+                    <!-- Keys generated by JS -->
+                </div>
+            </div>
+
+            <button id="scroll-right" class="absolute right-0 top-1/2 -translate-y-1/2 z-30 bg-slate-800/90 hover:bg-slate-700 text-white p-3 md:p-4 rounded-l-2xl border-y border-l border-slate-600 transition-all shadow-2xl flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            
+            <div class="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-slate-900 to-transparent z-10 pointer-events-none rounded-l-3xl"></div>
+            <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-slate-900 to-transparent z-10 pointer-events-none rounded-r-3xl"></div>
+        </div>
+
+        <!-- 2. Controller Buttons -->
+        <div class="flex flex-row gap-2 md:gap-4 mb-8 px-2 items-stretch">
+            <div class="flex-1 flex flex-col gap-2 md:gap-4">
+                <button id="btn-shift-down" class="big-btn flex-1 min-h-[60px] md:min-h-[80px] bg-slate-700 hover:bg-slate-600 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-1 shadow-lg border-b-4 border-slate-900 transition-all p-2 md:p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+                    <span class="btn-text text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-300 text-center">半音下げる</span>
+                </button>
+                <button id="btn-octave-down" class="big-btn flex-1 min-h-[60px] md:min-h-[80px] bg-slate-800 hover:bg-slate-700 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-1 shadow-lg border-b-4 border-black transition-all p-2 md:p-4">
+                    <div class="flex flex-col">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 opacity-50"><path d="m7 13 5 5 5-5"/></svg>
+                    </div>
+                    <span class="btn-text text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">オクターブ下</span>
+                </button>
+            </div>
+
+            <button id="btn-main-action" class="big-btn flex-[1.4] min-h-[140px] md:min-h-[180px] bg-blue-600 hover:bg-blue-500 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-2 md:gap-4 shadow-xl border-b-8 border-blue-800 transition-all p-4 md:p-6">
+                <div id="action-icon-container">
+                    <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="md:w-16 md:h-16"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <svg id="icon-pause" class="hidden" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="md:w-16 md:h-16"><rect x="6" y="4" width="6" height="16"/><rect x="14" y="4" width="6" height="16"/></svg>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span id="action-text" class="text-xl md:text-3xl font-black uppercase tracking-tighter">開始</span>
+                    <span class="text-[8px] md:text-[10px] opacity-70 font-bold uppercase tracking-widest mt-1 text-center">Space / 再開</span>
+                </div>
+            </button>
+
+            <div class="flex-1 flex flex-col gap-2 md:gap-4">
+                <button id="btn-shift-up" class="big-btn flex-1 min-h-[60px] md:min-h-[80px] bg-slate-700 hover:bg-slate-600 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-1 shadow-lg border-b-4 border-slate-900 transition-all p-2 md:p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/></svg>
+                    <span class="btn-text text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-300 text-center">半音上げる</span>
+                </button>
+                <button id="btn-octave-up" class="big-btn flex-1 min-h-[60px] md:min-h-[80px] bg-slate-800 hover:bg-slate-700 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-1 shadow-lg border-b-4 border-black transition-all p-2 md:p-4">
+                    <div class="flex flex-col">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="m17 11-5-5-5 5"/></svg>
+                    </div>
+                    <span class="btn-text text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">オクターブ上</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. Settings Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 px-2">
+            <!-- 1. 音律設定 -->
+            <div class="control-panel p-6">
+                <h2 class="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">音律設定</h2>
+                <div class="flex flex-col gap-4">
+                    <div class="flex bg-slate-900 p-1 rounded-lg">
+                        <button id="mode-equal" class="flex-1 py-2 text-[10px] md:text-xs font-bold rounded-md bg-blue-600 text-white">平均律</button>
+                        <button id="mode-pure" class="flex-1 py-2 text-[10px] md:text-xs font-bold rounded-md text-slate-400 hover:text-white">純正律</button>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 block mb-1">主音 (Root)</label>
+                        <select id="root-select" class="w-full bg-slate-800 border-none rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="0">C</option><option value="1">C# / Db</option><option value="2">D</option>
+                            <option value="3">D# / Eb</option><option value="4">E</option><option value="5">F</option>
+                            <option value="6">F# / Gb</option><option value="7">G</option><option value="8">G# / Ab</option>
+                            <option value="9">A</option><option value="10">A# / Bb</option><option value="11">B</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 和音モード -->
+            <div class="control-panel p-6">
+                <h2 class="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">和音モード</h2>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-[10px] text-slate-500 block mb-1">種類</label>
+                        <select id="chord-type-select" class="w-full bg-slate-800 border-none rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="none" selected>なし (手動構築)</option>
+                            <option value="minor">短三度 (m3+P5)</option>
+                            <option value="major">長三度 (M3+P5)</option>
+                            <option value="fourth">四度 (P4)</option>
+                            <option value="fifth">五度 (P5)</option>
+                            <option value="majorSixth">長六度 (M6)</option>
+                            <option value="minorSixth">短六度 (m6)</option>
+                            <option value="octave">オクターブ (+12)</option>
+                        </select>
+                    </div>
+                    <p class="text-[9px] text-slate-500 leading-tight">手動時はタップで追加。プリセット時はルートを選択。</p>
+                </div>
+            </div>
+
+            <!-- 3. 移調設定 -->
+            <div class="control-panel p-6">
+                <h2 class="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">移調設定</h2>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-[10px] text-slate-500 block mb-1">楽器移調 (Transpose)</label>
+                        <select id="transpose-select" class="w-full bg-slate-800 border-none rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="0">C管 (実音)</option>
+                            <option value="-2">B♭管 (Trp/Cl.)</option>
+                            <option value="-3">E♭管 (Sax)</option>
+                            <option value="-7">F管 (Horn)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 音量設定 -->
+            <div class="control-panel p-6">
+                <h2 class="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider text-white">音量設定</h2>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-[10px] text-slate-500 block mb-1">マスター音量</label>
+                        <div class="flex items-center gap-3 bg-slate-900/50 p-2 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-400"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                            <input type="range" id="volume-slider" min="0" max="100" value="50" class="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. メトロノーム -->
+            <div class="control-panel p-6">
+                <h2 class="text-xs font-bold text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-wider">メトロノーム</h2>
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <span id="bpm-display" class="text-2xl font-mono font-bold text-white">120</span>
+                        <button id="metro-toggle" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] font-bold transition-colors">START</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="metro-beat-select" class="flex-1 bg-slate-800 border-none rounded-md p-1.5 text-[10px] outline-none">
+                            <option value="0">拍子なし</option>
+                            <option value="2">2拍子</option>
+                            <option value="3">3拍子</option>
+                            <option value="4" selected>4拍子</option>
+                            <option value="6">6拍子</option>
+                        </select>
+                        <input type="range" id="bpm-slider" min="40" max="240" value="120" class="flex-[2] h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[8px] text-slate-500 uppercase">Vol</span>
+                        <input type="range" id="metro-volume-slider" min="0" max="100" value="70" class="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Tuning Adjustment (BOTTOM) -->
+        <div class="mt-12 mb-8 bg-slate-900/50 rounded-3xl p-6 border border-slate-800 flex flex-col items-center">
+            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-4">Master Tuning Adjustment</div>
+            <div class="flex items-center gap-6">
+                <button id="tuning-dec" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center font-bold transition-all">-</button>
+                <div class="text-center w-32">
+                    <div id="tuning-val-display" class="text-3xl font-black text-white font-mono">442.0</div>
+                    <div class="text-[10px] text-blue-400 font-bold uppercase">Hz</div>
+                </div>
+                <button id="tuning-inc" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center font-bold transition-all">+</button>
+            </div>
+            <input type="range" id="tuning-slider" min="4380" max="4450" value="4420" class="w-full max-w-md h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer mt-6 accent-blue-500">
+        </div>
+
+        <footer class="text-center text-slate-500 text-[10px] uppercase tracking-widest leading-relaxed mb-10 px-4">
+            v1.26: Enhanced Metronome & Tuning Control | Individual Volume for Metronome | Optimized Professional Layout
+        </footer>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let audioCtx = null;
+        let masterGain = null;
+        let metroGain = null; // メトロノーム独立音量
+        let mainFilter = null;
+        let oscillators = {};
+        let chordOscillators = {};
+        let lastManualNotes = []; 
+        let isPureMode = false;
+        let isSustainActive = true; 
+        let currentChordType = 'none'; 
+        let currentOscType = 'square';
+        let currentSustainBaseNote = 69; 
+        let rootNote = 9; 
+        let tempo = 120;
+        let tuningBase = 442.0; // マスターチューニング
+        let metroInterval = null;
+        let currentBeatCount = 0;
+
+        const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const pureRatios = [1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8];
+
+        const chordIntervals = {
+            none: [0], minor: [0, 3, 7], major: [0, 4, 7], fourth: [0, 5],
+            fifth: [0, 7], majorSixth: [0, 9], minorSixth: [0, 8], octave: [0, 12]
+        };
+
+        // --- Audio Logic ---
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            mainFilter = audioCtx.createBiquadFilter();
+            mainFilter.type = 'lowpass';
+            mainFilter.frequency.setValueAtTime(2000, audioCtx.currentTime);
+            mainFilter.Q.setValueAtTime(0.7, audioCtx.currentTime);
+            
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.5;
+            
+            metroGain = audioCtx.createGain();
+            metroGain.gain.value = 0.7; // 初期メトロノーム音量
+            
+            mainFilter.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+            metroGain.connect(audioCtx.destination);
+        }
+
+        function getFrequency(noteNumber) {
+            if (!isPureMode) {
+                return tuningBase * Math.pow(2, (noteNumber - 69) / 12);
+            } else {
+                const referenceMidiRoot = 60 + rootNote;
+                const rootFreq = tuningBase * Math.pow(2, (referenceMidiRoot - 69) / 12);
+                const totalDiff = noteNumber - referenceMidiRoot;
+                const octaveShift = Math.floor(totalDiff / 12);
+                const relativePos = (totalDiff % 12 + 12) % 12;
+                return rootFreq * pureRatios[relativePos] * Math.pow(2, octaveShift);
+            }
+        }
+
+        function playNote(note, element, isChord = false) {
+            initAudio();
+            const targetDict = isChord ? chordOscillators : oscillators;
+            const noteKey = String(note);
+            if (targetDict[noteKey]) return;
+
+            if (element) {
+                element.classList.add('active');
+                if ([1, 3, 6, 8, 10].includes(parseInt(note) % 12)) element.classList.add('bg-slate-700');
+            }
+
+            const noteNodes = [];
+            const freq = getFrequency(parseInt(note));
+            const now = audioCtx.currentTime;
+
+            switch (currentOscType) {
+                case 'piano': 
+                    [1, 2, 3].forEach((mul, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = freq * mul;
+                        g.gain.setValueAtTime(0, now);
+                        g.gain.linearRampToValueAtTime(0.2 / (idx + 1), now + 0.01);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + (isChord ? 2.5 : 1.5));
+                        osc.connect(g); g.connect(mainFilter); osc.start();
+                        noteNodes.push({osc, g});
+                    });
+                    break;
+                case 'organ': 
+                    [1, 2, 3, 4].forEach((mul, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+                        osc.frequency.value = freq * mul;
+                        g.gain.setValueAtTime(0, now);
+                        g.gain.linearRampToValueAtTime(0.1, now + 0.05);
+                        osc.connect(g); g.connect(mainFilter); osc.start();
+                        noteNodes.push({osc, g});
+                    });
+                    break;
+                case 'violin': {
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = freq;
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(0.15, now + 0.08); 
+                    osc.connect(g); g.connect(mainFilter); osc.start();
+                    noteNodes.push({osc, g});
+                    break;
+                }
+                case 'flute': {
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc1.type = 'sine'; osc2.type = 'triangle';
+                    osc1.frequency.value = freq; osc2.frequency.value = freq;
+                    const g2 = audioCtx.createGain(); g2.gain.value = 0.2; 
+                    osc2.connect(g2); osc1.connect(g); g2.connect(g);
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(0.25, now + 0.1);
+                    g.connect(mainFilter); osc1.start(); osc2.start();
+                    noteNodes.push({osc: osc1, osc2, g});
+                    break;
+                }
+                case 'oboe': {
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = 'sawtooth'; osc.frequency.value = freq;
+                    const hp = audioCtx.createBiquadFilter();
+                    hp.type = 'highpass'; hp.frequency.value = 800;
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(0.12, now + 0.06);
+                    osc.connect(g); g.connect(hp); hp.connect(mainFilter); osc.start();
+                    noteNodes.push({osc, g, subFilter: hp});
+                    break;
+                }
+                case 'clarinet': {
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = 'square'; osc.frequency.value = freq;
+                    const lp = audioCtx.createBiquadFilter();
+                    lp.type = 'lowpass'; lp.frequency.value = 1500;
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(0.15, now + 0.05);
+                    osc.connect(g); g.connect(lp); lp.connect(mainFilter); osc.start();
+                    noteNodes.push({osc, g, subFilter: lp});
+                    break;
+                }
+                case 'bassoon': {
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc1.type = 'sawtooth'; osc2.type = 'square';
+                    osc1.frequency.value = freq; osc2.frequency.value = freq;
+                    const g2 = audioCtx.createGain(); g2.gain.value = 0.5;
+                    osc2.connect(g2); osc1.connect(g); g2.connect(g);
+                    const lp = audioCtx.createBiquadFilter();
+                    lp.type = 'lowpass'; lp.frequency.value = 800;
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(0.15, now + 0.1);
+                    g.connect(lp); lp.connect(mainFilter); osc1.start(); osc2.start();
+                    noteNodes.push({osc: osc1, osc2, g, subFilter: lp});
+                    break;
+                }
+                case 'horn': {
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc1.type = 'triangle'; osc2.type = 'sawtooth';
+                    osc1.frequency.value = freq; osc2.frequency.value = freq;
+                    const g2 = audioCtx.createGain(); g2.gain.value = 0.3; 
+                    osc2.connect(g2); osc1.connect(g); g2.connect(g);
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(0.18, now + 0.12);
+                    g.connect(mainFilter); osc1.start(); osc2.start();
+                    noteNodes.push({osc: osc1, osc2, g});
+                    break;
+                }
+                default: {
+                    const osc = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    osc.type = currentOscType; osc.frequency.value = freq;
+                    g.gain.setValueAtTime(0, now);
+                    let targetVol = isChord ? 0.10 : 0.15;
+                    if (currentOscType === 'sine' || currentOscType === 'triangle') targetVol *= 1.5;
+                    g.gain.linearRampToValueAtTime(targetVol, now + 0.02);
+                    osc.connect(g); g.connect(mainFilter); osc.start();
+                    noteNodes.push({osc, g});
+                }
+            }
+
+            targetDict[noteKey] = noteNodes;
+            document.getElementById('master-clock').textContent = freq.toFixed(1) + " Hz";
+        }
+
+        function stopNote(note, element, isChord = false) {
+            const targetDict = isChord ? chordOscillators : oscillators;
+            const noteKey = String(note);
+            if (!targetDict[noteKey]) return;
+            if (element) element.classList.remove('active');
+            const now = audioCtx.currentTime;
+            targetDict[noteKey].forEach(node => {
+                if (node.g) {
+                    node.g.gain.cancelScheduledValues(now);
+                    node.g.gain.setValueAtTime(node.g.gain.value, now);
+                    node.g.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+                }
+                setTimeout(() => { if (node.osc) node.osc.stop(); if (node.osc2) node.osc2.stop(); }, 250);
+            });
+            delete targetDict[noteKey];
+        }
+
+        function clearChord() {
+            const activeNotes = Object.keys(chordOscillators).map(Number);
+            if (activeNotes.length > 0) lastManualNotes = activeNotes;
+            Object.keys(chordOscillators).forEach(note => stopNote(note, null, true));
+            updateActionBtnUI(false);
+        }
+
+        function updateSustainedChord() {
+            if (currentChordType === 'none') {
+                if (Object.keys(chordOscillators).length === 0 && lastManualNotes.length > 0) {
+                    lastManualNotes.forEach(n => playNote(n, null, true));
+                    updateActionBtnUI(true);
+                }
+                return;
+            }
+            clearChord();
+            if (!isSustainActive) return;
+            const intervals = chordIntervals[currentChordType];
+            intervals.forEach(interval => playNote(currentSustainBaseNote + interval, null, true));
+            updateActionBtnUI(true);
+        }
+
+        function shiftAllNotes(delta) {
+            if (!isSustainActive) return;
+            if (currentChordType !== 'none') {
+                currentSustainBaseNote += delta;
+                rootNote = (rootNote + delta + 120) % 12;
+                syncRootUI();
+                updateSustainedChord();
+            } else {
+                const activeNotes = Object.keys(chordOscillators).map(Number);
+                rootNote = (rootNote + delta + 120) % 12; 
+                syncRootUI();
+                if (activeNotes.length > 0) {
+                    const newNotes = activeNotes.map(n => n + delta);
+                    clearChord();
+                    newNotes.forEach(n => playNote(n, null, true));
+                    updateActionBtnUI(true);
+                } else if (lastManualNotes.length > 0) {
+                    lastManualNotes = lastManualNotes.map(n => n + delta);
+                }
+            }
+        }
+
+        function refreshActiveOscillators() {
+            if (!audioCtx) return;
+            const currentManual = Object.keys(oscillators).map(Number);
+            const currentChords = Object.keys(chordOscillators).map(Number);
+            const tempChordBackup = [...currentChords];
+            Object.keys(oscillators).forEach(n => stopNote(n, null, false));
+            Object.keys(chordOscillators).forEach(n => stopNote(n, null, true));
+            currentManual.forEach(n => playNote(n, null, false));
+            tempChordBackup.forEach(n => playNote(n, null, true));
+        }
+
+        // --- Metronome logic ---
+        function playMetroClick(isAccent) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            
+            // はっきりした音色にするため矩形波を使用
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(isAccent ? 1800 : 1000, now);
+            
+            g.gain.setValueAtTime(0.5, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            
+            osc.connect(g);
+            g.connect(metroGain);
+            
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+
+        function toggleMetronome() {
+            if (metroInterval) {
+                clearInterval(metroInterval);
+                metroInterval = null;
+                document.getElementById('metro-toggle').textContent = "START";
+                document.getElementById('metro-toggle').classList.replace('bg-emerald-600', 'bg-slate-800');
+                currentBeatCount = 0;
+            } else {
+                initAudio();
+                document.getElementById('metro-toggle').textContent = "STOP";
+                document.getElementById('metro-toggle').classList.replace('bg-slate-800', 'bg-emerald-600');
+                
+                const beatSetting = parseInt(document.getElementById('metro-beat-select').value);
+                const interval = (60 / tempo) * 1000;
+                
+                currentBeatCount = 0;
+                // 即座に1拍目
+                playMetroClick(beatSetting > 0);
+                currentBeatCount++;
+
+                metroInterval = setInterval(() => {
+                    const isAccent = beatSetting > 0 && (currentBeatCount % beatSetting === 0);
+                    playMetroClick(isAccent);
+                    currentBeatCount++;
+                }, interval);
+            }
+        }
+
+        // --- Master Tuning Adjustment ---
+        function setTuning(val) {
+            tuningBase = Math.round(val * 10) / 10;
+            document.getElementById('tuning-val-display').textContent = tuningBase.toFixed(1);
+            document.getElementById('tuning-slider').value = Math.round(tuningBase * 10);
+            refreshActiveOscillators();
+        }
+
+        // --- UI Updates ---
+        function updateActionBtnUI(isPlaying) {
+            const btn = document.getElementById('btn-main-action');
+            const playIcon = document.getElementById('icon-play');
+            const pauseIcon = document.getElementById('icon-pause');
+            const actionText = document.getElementById('action-text');
+            if (isPlaying || Object.keys(chordOscillators).length > 0) {
+                btn.classList.replace('bg-blue-600', 'bg-red-600');
+                btn.classList.replace('border-blue-800', 'border-red-800');
+                playIcon.classList.add('hidden'); pauseIcon.classList.remove('hidden');
+                actionText.textContent = "停止";
+            } else {
+                btn.classList.replace('bg-red-600', 'bg-blue-600');
+                btn.classList.replace('border-red-800', 'border-blue-800');
+                playIcon.classList.remove('hidden'); pauseIcon.classList.add('hidden');
+                actionText.textContent = "開始";
+            }
+        }
+
+        function updateSustainStatusUI() {
+            const label = document.getElementById('sustain-status');
+            const led = document.getElementById('sustain-led');
+            const btn = document.getElementById('sustain-toggle');
+            if (isSustainActive) {
+                label.textContent = "ON"; label.classList.add('text-red-400');
+                led.className = "w-3 h-3 md:w-4 md:h-4 rounded-full bg-red-500 border-2 border-red-300 shadow-[0_0_10px_rgba(239,68,68,0.8)]";
+                btn.classList.add('sustain-active-glow');
+            } else {
+                label.textContent = "OFF"; label.classList.remove('text-red-400');
+                led.className = "w-3 h-3 md:w-4 md:h-4 rounded-full bg-slate-900 border-2 border-slate-500";
+                btn.classList.remove('sustain-active-glow');
+            }
+        }
+
+        function syncRootUI() { document.getElementById('root-select').value = rootNote; }
+
+        function centerA4(smooth = false) {
+            const a4Key = document.querySelector('[data-note="69"]');
+            if (a4Key) {
+                const container = document.getElementById('keyboard-scroll-container');
+                const offset = a4Key.offsetLeft - (container.offsetWidth / 2) + (a4Key.offsetWidth / 2);
+                container.scrollTo({ left: offset, behavior: smooth ? 'smooth' : 'auto' });
+            }
+        }
+
+        // --- Keyboard Generation ---
+        const keyboard = document.getElementById('keyboard');
+        const startOctave = 2; const numKeys = 61; 
+        for (let i = 0; i < numKeys; i++) {
+            const noteNum = i + (startOctave * 12);
+            const noteIndex = noteNum % 12;
+            const isBlack = [1, 3, 6, 8, 10].includes(noteIndex);
+            const key = document.createElement('div');
+            key.className = isBlack ? 'key black-key' : 'key white-key';
+            key.dataset.note = noteNum;
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = noteNames[noteIndex];
+            key.appendChild(labelSpan);
+            const handleInteraction = () => {
+                initAudio();
+                const noteValue = parseInt(key.dataset.note);
+                if (isSustainActive) {
+                    if (currentChordType === 'none') {
+                        if (chordOscillators[String(noteValue)]) stopNote(noteValue, null, true);
+                        else playNote(noteValue, null, true);
+                        updateActionBtnUI(Object.keys(chordOscillators).length > 0);
+                    } else {
+                        currentSustainBaseNote = noteValue; rootNote = currentSustainBaseNote % 12;
+                        syncRootUI(); updateSustainedChord();
+                    }
+                }
+                playNote(key.dataset.note, key);
+            };
+            key.addEventListener('mousedown', handleInteraction);
+            key.addEventListener('mouseup', () => stopNote(key.dataset.note, key));
+            key.addEventListener('mouseleave', () => stopNote(key.dataset.note, key));
+            key.addEventListener('touchstart', (e) => { e.preventDefault(); handleInteraction(); });
+            key.addEventListener('touchend', (e) => { e.preventDefault(); stopNote(key.dataset.note, key); });
+            keyboard.appendChild(key);
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('osc-type-select').addEventListener('change', (e) => { currentOscType = e.target.value; refreshActiveOscillators(); });
+        document.getElementById('btn-shift-down').addEventListener('click', () => shiftAllNotes(-1));
+        document.getElementById('btn-shift-up').addEventListener('click', () => shiftAllNotes(1));
+        document.getElementById('btn-octave-down').addEventListener('click', () => shiftAllNotes(-12));
+        document.getElementById('btn-octave-up').addEventListener('click', () => shiftAllNotes(12));
+
+        document.getElementById('btn-main-action').addEventListener('click', () => {
+            if (Object.keys(chordOscillators).length > 0) clearChord();
+            else { if (!isSustainActive) { isSustainActive = true; updateSustainStatusUI(); } updateSustainedChord(); }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') { e.preventDefault(); document.getElementById('btn-main-action').click(); }
+            if (!isSustainActive) return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); shiftAllNotes(e.shiftKey ? 12 : 1); }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); shiftAllNotes(e.shiftKey ? -12 : -1); }
+        });
+
+        const scrollContainer = document.getElementById('keyboard-scroll-container');
+        document.getElementById('scroll-left').addEventListener('click', () => scrollContainer.scrollBy({ left: -300, behavior: 'smooth' }));
+        document.getElementById('scroll-right').addEventListener('click', () => scrollContainer.scrollBy({ left: 300, behavior: 'smooth' }));
+
+        document.getElementById('mode-equal').addEventListener('click', function() { isPureMode = false; this.classList.add('bg-blue-600', 'text-white'); document.getElementById('mode-pure').classList.remove('bg-blue-600', 'text-white'); refreshActiveOscillators(); });
+        document.getElementById('mode-pure').addEventListener('click', function() { isPureMode = true; this.classList.add('bg-blue-600', 'text-white'); document.getElementById('mode-equal').classList.remove('bg-blue-600', 'text-white'); refreshActiveOscillators(); });
+
+        document.getElementById('root-select').addEventListener('change', (e) => {
+            rootNote = parseInt(e.target.value);
+            if (currentChordType !== 'none') {
+                const currentOctave = Math.floor(currentSustainBaseNote / 12);
+                currentSustainBaseNote = (currentOctave * 12) + rootNote;
+            }
+            refreshActiveOscillators();
+        });
+
+        document.getElementById('chord-type-select').addEventListener('change', (e) => { currentChordType = e.target.value; Object.keys(chordOscillators).forEach(note => stopNote(note, null, true)); updateActionBtnUI(false); });
+        document.getElementById('sustain-toggle').addEventListener('click', function() { initAudio(); isSustainActive = !isSustainActive; if (!isSustainActive) clearChord(); updateSustainStatusUI(); });
+        
+        document.getElementById('volume-slider').addEventListener('input', (e) => { if (masterGain) masterGain.gain.value = e.target.value / 100; });
+        document.getElementById('metro-toggle').addEventListener('click', toggleMetronome);
+        document.getElementById('bpm-slider').addEventListener('input', (e) => { tempo = e.target.value; document.getElementById('bpm-display').textContent = tempo; if (metroInterval) { toggleMetronome(); toggleMetronome(); } });
+        document.getElementById('metro-volume-slider').addEventListener('input', (e) => { if (metroGain) metroGain.gain.value = e.target.value / 100; });
+        
+        document.getElementById('tuning-dec').addEventListener('click', () => setTuning(tuningBase - 0.1));
+        document.getElementById('tuning-inc').addEventListener('click', () => setTuning(tuningBase + 0.1));
+        document.getElementById('tuning-slider').addEventListener('input', (e) => setTuning(e.target.value / 10));
+
+        document.getElementById('transpose-select').addEventListener('change', (e) => {
+            const offset = parseInt(e.target.value);
+            document.querySelectorAll('.key').forEach(key => {
+                const originalNote = parseInt(key.dataset.note) % 12;
+                const displayedNote = (originalNote - offset + 12) % 12;
+                key.querySelector('span').textContent = noteNames[displayedNote];
+            });
+        });
+
+        window.onload = () => { updateSustainStatusUI(); centerA4(false); };
+        window.onresize = () => centerA4(false);
+    </script>
+</body>
+</html>
