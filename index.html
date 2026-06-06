@@ -98,7 +98,7 @@
         <!-- Header -->
         <header class="flex justify-between items-end mb-6 px-4">
             <div>
-                <h1 class="text-xl md:text-2xl font-black text-blue-400 tracking-tight leading-none">HARMONY DIRECTOR <span class="text-sm font-normal text-slate-400">v1.30</span></h1>
+                <h1 class="text-xl md:text-2xl font-black text-blue-400 tracking-tight leading-none">HARMONY DIRECTOR <span class="text-sm font-normal text-slate-400">v1.31</span></h1>
                 <p class="text-[9px] md:text-[10px] text-slate-500 uppercase mt-1 text-nowrap">Professional Tuning & iOS Background Audio Enabled</p>
             </div>
             <div class="flex items-center gap-6">
@@ -331,7 +331,7 @@
         </div>
 
         <footer class="text-center text-slate-500 text-[10px] uppercase tracking-widest leading-relaxed mb-10 px-4">
-            v1.30: iOS Background Audio & Wake Lock Enabled | Optimized Layout | Multi-Speed Scroll Buttons
+            v1.31: iOS Background Audio & Wake Lock Enabled | Optimized Layout | Multi-Speed Scroll Buttons
         </footer>
     </div>
 
@@ -761,8 +761,8 @@
 
         // --- Keyboard Generation ---
         const keyboard = document.getElementById('keyboard');
-        const startOctave = 0; // C0 (MIDI 12) - 2 octaves lower than before (originally C2)
-        const numKeys = 109;   // C0 to C9 (MIDI 120) - 2 octaves higher than before (originally C7)
+        const startOctave = 2; // C2 (MIDI 36)
+        const numKeys = 73;    // Up to C8 (MIDI 108) - 高音域をさらに1オクターブ拡張
 
         for (let i = 0; i < numKeys; i++) {
             const noteNum = i + (startOctave * 12);
