@@ -761,8 +761,8 @@
 
         // --- Keyboard Generation ---
         const keyboard = document.getElementById('keyboard');
-        const startOctave = 2; // C2 (MIDI 36)
-        const numKeys = 61;    // Up to C7 (MIDI 96)
+        const startOctave = 0; // C0 (MIDI 12) - 2 octaves lower than before (originally C2)
+        const numKeys = 109;   // C0 to C9 (MIDI 120) - 2 octaves higher than before (originally C7)
 
         for (let i = 0; i < numKeys; i++) {
             const noteNum = i + (startOctave * 12);
